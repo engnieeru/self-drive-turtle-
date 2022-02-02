@@ -1,0 +1,285 @@
+from turtle import Turtle
+from PIL import Image
+from tkinter import messagebox
+from random import *
+
+
+def convert_to_map_position(x, y):
+
+    map_x = map_center_x + x
+    map_y = map_center_y - y
+    return map_x, map_y
+
+
+def is_red_area():
+    turtle_x, turtle_y = turtle.pos()
+    map_x, map_y = convert_to_map_position(turtle_x, turtle_y)
+    map_color = px[map_x, map_y]
+
+    if map_color[0] == 255 and map_color[1] == 0 and map_color[2] == 0:
+        return True
+    return False
+
+
+def is_green_area():
+
+    turtle_x, turtle_y = turtle.pos()
+    map_x, map_y = convert_to_map_position(turtle_x, turtle_y)
+    map_color = px[map_x, map_y]
+
+    if map_color[0] == 0 and map_color[1] == 255 and map_color[2] == 0:
+        return True
+    return False
+
+
+def is_road():
+
+    turtle_x, turtle_y = turtle.pos()
+    map_x, map_y = convert_to_map_position(turtle_x, turtle_y)
+
+    box_left_top = (map_x - half_width, map_y - half_height)
+    box_left_bottom = (map_x - half_width, map_y + half_height)
+    box_right_top = (map_x + half_width, map_y - half_height)
+    box_right_bottom = (map_x + half_width, map_y + half_height)
+
+    lt_color = px[box_left_top[0], box_left_top[1]]
+    lb_color = px[box_left_bottom[0], box_left_bottom[1]]
+    rt_color = px[box_right_top[0], box_right_top[1]]
+    rb_color = px[box_right_bottom[0], box_right_bottom[1]]
+
+    if lt_color[0] == 0 and lt_color[1] == 0 and lt_color[2] == 255:
+        return False
+    if lb_color[0] == 0 and lb_color[1] == 0 and lb_color[2] == 255:
+        return False
+    if rt_color[0] == 0 and rt_color[1] == 0 and rt_color[2] == 255:
+        return False
+    if rb_color[0] == 0 and rb_color[1] == 0 and rb_color[2] == 255:
+        return False
+    return True
+
+
+def detect_wall():
+    angle = turtle.heading()
+    detect_x, detect_y = turtle.pos()
+    if angle == 0:
+        detect_x += detection_distance
+    elif angle == 90:
+        detect_y += detection_distance
+    elif angle == 180:
+        detect_x -= detection_distance
+    elif angle == 270:
+        detect_y -= detection_distance
+    map_x, map_y = convert_to_map_position(detect_x, detect_y)
+    map_color = px[map_x, map_y]
+    if map_color[0] == 0 and map_color[1] == 0 and map_color[2] == 255:
+        return True
+    return False
+
+
+def distance_to_wall():
+
+    turtle_x, turtle_y = turtle.pos()
+    map_x, map_y = convert_to_map_position(turtle_x, turtle_y)
+    map_x = int(map_x)
+    map_y = int(map_y)
+    img_width, img_height = img.size
+
+
+    distance_0 = 0
+    distance_90 = 0
+    distance_180 = 0
+    distance_270 = 0
+    step = 2
+
+    for x in range(map_x, img_width, step):
+        map_color = px[x, map_y]
+        if map_color[0] == 0 and map_color[1] == 0 and map_color[2] == 255:
+            # 벽(도로가 아닌곳) 파란색(0, 0, 255) 이면 for 루프 중단
+            break
+        distance_0 += step
+
+    for y in range(map_y, 0, -step):
+        map_color = px[map_x, y]
+        if map_color[0] == 0 and map_color[1] == 0 and map_color[2] == 255:
+            break
+        distance_90 += step
+
+    for x in range(map_x, 0, -step):
+        map_color = px[x, map_y]
+        if map_color[0] == 0 and map_color[1] == 0 and map_color[2] == 255:
+
+            break
+        distance_180 += step
+
+    for y in range(map_y, img_height, step):
+        map_color = px[map_x, y]
+        if map_color[0] == 0 and map_color[1] == 0 and map_color[2] == 255:
+
+            break
+        distance_270 += step
+
+    return distance_0, distance_90, distance_180, distance_270
+
+
+sensor_lt = 1  
+sensor_lb = 2  
+sensor_rt = 3  
+sensor_rb = 4  
+sensor_none = 0  
+
+
+def detect_sensors():
+
+    turtle_x, turtle_y = turtle.pos()
+    map_x = map_center_x + turtle_x
+    map_y = map_center_y - turtle_y
+    w = half_width + 2  
+    h = half_height + 2  
+    box_left_top = (map_x - w, map_y - h)
+    box_left_bottom = (map_x - w, map_y + h)
+    box_right_top = (map_x + w, map_y - h)
+    box_right_bottom = (map_x + w, map_y + h)
+
+    lt_color = px[box_left_top[0], box_left_top[1]]
+    lb_color = px[box_left_bottom[0], box_left_bottom[1]]
+    rt_color = px[box_right_top[0], box_right_top[1]]
+    rb_color = px[box_right_bottom[0], box_right_bottom[1]]
+
+    if lt_color[0] == 0 and lt_color[1] == 0 and lt_color[2] == 255:
+        return sensor_lt
+    if lb_color[0] == 0 and lb_color[1] == 0 and lb_color[2] == 255:
+        return sensor_lb
+    if rt_color[0] == 0 and rt_color[1] == 0 and rt_color[2] == 255:
+        return sensor_rt
+    if rb_color[0] == 0 and rb_color[1] == 0 and rb_color[2] == 255:
+        return sensor_rb
+    return sensor_none
+
+
+def move_forward():
+    turtle.forward(2)
+
+
+def turn_left():
+    turtle.left(90)
+
+
+def turn_right():
+    turtle.right(90)
+
+
+def move_backward():
+    turtle.backward(1)
+
+
+def game_loop():
+    global is_checked_red_area
+    
+    angle = turtle.heading()
+    turtle_x, turtle_y = turtle.position()
+
+    if detect_wall():
+        dst_0, dst_90, dst_180, dst_270 = distance_to_wall()
+        if angle == 0:
+            if dst_90 > dst_270:
+                turn_left()
+            else:
+                turn_right()
+        elif angle == 90:
+            if dst_180 > dst_0:
+                turn_left()
+            else:
+                turn_right()
+        elif angle == 180:
+            if dst_270 > dst_90:
+                turn_left()
+            else:
+                turn_right()
+        elif angle == 270:
+            if dst_0 > dst_180:
+                turn_left()
+            else:
+                turn_right()
+
+    move_amount = 1
+    detected_sensor = detect_sensors()
+    if detected_sensor != 0:
+        if angle == 0:
+            if detected_sensor == sensor_rt:
+                turtle.setposition(turtle_x, turtle_y - move_amount)
+            elif detected_sensor == sensor_rb:
+                turtle.setposition(turtle_x, turtle_y + move_amount)
+        elif angle == 90:
+            if detected_sensor == sensor_lt:
+                turtle.setposition(turtle_x + move_amount, turtle_y)
+            elif detected_sensor == sensor_rt:
+                turtle.setposition(turtle_x - move_amount, turtle_y)
+        elif angle == 180:
+            if detected_sensor == sensor_lt:
+                turtle.setposition(turtle_x, turtle_y - move_amount)
+            elif detected_sensor == sensor_lb:
+                turtle.setposition(turtle_x, turtle_y + move_amount)
+        elif angle == 270:
+            if detected_sensor == sensor_lb:
+                turtle.setposition(turtle_x + move_amount, turtle_y)
+            elif detected_sensor == sensor_rb:
+                turtle.setposition(turtle_x - move_amount, turtle_y)
+
+
+    if is_road():
+        move_forward()
+    else:
+        messagebox.showwarning("충돌", "충돌했습니다.")
+        turtle.color('red', 'yellow')
+        turtle.setpos(0, 0)
+        turtle.setheading(0)
+        is_checked_red_area = False
+
+    if not is_checked_red_area and is_red_area():
+        is_checked_red_area = True
+        turtle.color('purple', 'orange')
+
+    if is_checked_red_area and is_green_area():
+        messagebox.showwarning("미션성공", "미션 완료했습니다.")
+        return
+
+    screen.update()
+    screen.ontimer(game_loop)
+
+
+img = Image.open("turtle-car-load.png")
+px = img.load()
+print(img.size)
+map_center_x = int(img.size[0] / 2)
+map_center_y = int(img.size[1] / 2)
+print(px[map_center_x, map_center_y])
+is_checked_red_area = False
+
+
+turtle = Turtle()
+turtle.shape("turtle")
+turtle.color('red', 'yellow')
+turtle.penup()
+turtle.speed(10)
+turtle.turtlesize(*(1.2, 1.2, 1.0))
+size = turtle.turtlesize()
+turtle_box_size = (size[0]*20, size[1]*20)
+detection_distance = 30
+
+half_width = turtle_box_size[0] / 2
+half_height = turtle_box_size[1] / 2
+
+screen = turtle.getscreen()
+screen.screensize(canvwidth=800, canvheight=600)
+screen.setup(width=840, height=640)
+screen.bgpic("turtle-car-load.png")
+screen.onkey(move_forward, "Up")
+screen.onkey(move_backward, "Down")
+screen.onkey(turn_left, "Left")
+screen.onkey(turn_right, "Right")
+
+screen.listen()
+
+game_loop()
+
+screen.mainloop()
